@@ -46,18 +46,16 @@ TOPIC = ""
 
 # On-screen text cards, one per beat (supports \n for line breaks)
 BEATS = [
-    "Jonathan — thanks for\nthe time today.",
-    "Your point about curiosity\nreally stuck with me.",
-    "Learning fast, building things that matter,\nturning ideas into useful judgment —\nthat's the work I want to keep doing.",
-    "Hope we get to talk again.\n— Nick",
+    "First on-screen card\nline two",
+    "Second card",
+    "Third card — longer text\ncan span multiple lines",
+    "Sign-off\n— Your Name",
 ]
 
 # Narrated voiceover (read aloud by ElevenLabs)
 SPOKEN_TEXT = """\
-Hi Jonathan — I really wanted to thank you for the time today.
-The way you talked about curiosity resonated with me more than you might expect.
-Learning fast, building things that matter, turning ideas into useful judgment —
-that's the work I want to keep doing. Hope we get to talk again soon.\
+Your full voiceover script goes here.
+It will be read aloud by ElevenLabs.\
 """
 
 # Prompt used to generate the narrator image via DALL-E 3 (if no photo is provided)
