@@ -206,6 +206,20 @@ def render_frame(t, beat_text, text_alpha):
     return np.array(img)
 
 
+# ── content moderation ─────────────────────────────────────────────────────────
+def check_safety(text, label="input"):
+    r = requests.post(
+        "https://api.openai.com/v1/moderations",
+        headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
+        json={"input": text},
+    )
+    r.raise_for_status()
+    result = r.json()["results"][0]
+    if result["flagged"]:
+        flagged = [k for k, v in result["categories"].items() if v]
+        sys.exit(f"Error: {label} flagged as unsafe ({', '.join(flagged)}). Please revise and try again.")
+
+
 # ── LLM script generation ──────────────────────────────────────────────────────
 def generate_script(topic):
     r = requests.post(
@@ -337,6 +351,7 @@ def main():
         if not OPENAI_KEY:
             sys.exit("Error: set OPENAI_API_KEY to generate a script from TOPIC")
         print("Step 0: Generating script from topic...")
+        check_safety(TOPIC, "topic")
         BEATS, SPOKEN_TEXT, snippets = generate_script(TOPIC)
         SCREENS = build_screens(snippets)
         print(f"  {len(BEATS)} beats, {len(snippets)} code snippets")
@@ -362,6 +377,7 @@ def main():
                 print("Place a square PNG there, or set OPENAI_API_KEY to auto-generate one.")
                 sys.exit(1)
             print("Step 2: Generating narrator image...")
+            check_safety(IMAGE_PROMPT, "image prompt")
             generate_narrator_image(IMAGE_PROMPT, IMG_PATH)
             print(f"  saved {IMG_PATH}")
         print("Step 2: Generating talking head...")
