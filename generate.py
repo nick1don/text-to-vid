@@ -4,7 +4,7 @@ Renders a short video with an animated code background, fading text beats,
 a D-ID talking head synced to an ElevenLabs voiceover, and a composited output.
 """
 
-import os, sys, math, time, random, requests
+import os, sys, math, time, random, json, requests
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from pydub import AudioSegment
@@ -41,6 +41,9 @@ W, H = 1280, 720
 FPS  = 30
 
 # ── content ────────────────────────────────────────────────────────────────────
+# Set TOPIC to auto-generate the script, or leave blank and fill BEATS/SPOKEN_TEXT manually
+TOPIC = ""
+
 # On-screen text cards, one per beat (supports \n for line breaks)
 BEATS = [
     "Jonathan — thanks for\nthe time today.",
@@ -202,6 +205,28 @@ def render_frame(t, beat_text, text_alpha):
     return np.array(img)
 
 
+# ── LLM script generation ──────────────────────────────────────────────────────
+def generate_script(topic):
+    r = requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
+        json={
+            "model": "gpt-4o",
+            "messages": [{"role": "user", "content": (
+                f"Write content for a short talking-head video about: {topic}\n\n"
+                "Return a JSON object with two keys:\n"
+                "- \"beats\": list of 4 short on-screen text cards (each under 60 chars, \\n for line breaks)\n"
+                "- \"spoken_text\": a natural 15-20 second voiceover script (3-4 sentences)\n\n"
+                "Return only valid JSON."
+            )}],
+            "response_format": {"type": "json_object"},
+        },
+    )
+    r.raise_for_status()
+    result = json.loads(r.json()["choices"][0]["message"]["content"])
+    return result["beats"], result["spoken_text"]
+
+
 # ── ElevenLabs TTS ─────────────────────────────────────────────────────────────
 def generate_speech(text, out_path):
     words, current, parts = text.split(), [], []
@@ -301,37 +326,47 @@ def generate_talking_head(img_path, wav_path, out_path):
 
 # ── pipeline ───────────────────────────────────────────────────────────────────
 def main():
-    # ── step 0: voiceover ──────────────────────────────────────────────────────
+    global BEATS, SPOKEN_TEXT
+
+    # ── step 0: generate script ────────────────────────────────────────────────
+    if TOPIC:
+        if not OPENAI_KEY:
+            sys.exit("Error: set OPENAI_API_KEY to generate a script from TOPIC")
+        print("Step 0: Generating script from topic...")
+        BEATS, SPOKEN_TEXT = generate_script(TOPIC)
+        print(f"  {len(BEATS)} beats generated")
+
+    # ── step 1: voiceover ──────────────────────────────────────────────────────
     if not os.path.exists(AUDIO_PATH):
-        print("Step 0: Generating voiceover...")
+        print("Step 1: Generating voiceover...")
         generate_speech(SPOKEN_TEXT, AUDIO_PATH)
         print(f"  saved {AUDIO_PATH}")
     else:
-        print("Step 0: Voiceover exists, skipping.")
+        print("Step 1: Voiceover exists, skipping.")
 
     sound = AudioSegment.from_mp3(AUDIO_PATH)
     sound.export(WAV_PATH, format="wav")
     audio_duration = len(sound) / 1000
     print(f"  duration: {audio_duration:.1f}s")
 
-    # ── step 1: narrator image + talking head ─────────────────────────────────
+    # ── step 2: narrator image + talking head ─────────────────────────────────
     if not os.path.exists(ANIM_PATH):
         if not os.path.exists(IMG_PATH):
             if not OPENAI_KEY:
                 print(f"\nError: no narrator photo at {IMG_PATH} and OPENAI_API_KEY not set.")
                 print("Place a square PNG there, or set OPENAI_API_KEY to auto-generate one.")
                 sys.exit(1)
-            print("Step 1: Generating narrator image...")
+            print("Step 2: Generating narrator image...")
             generate_narrator_image(IMAGE_PROMPT, IMG_PATH)
             print(f"  saved {IMG_PATH}")
-        print("Step 1: Generating talking head...")
+        print("Step 2: Generating talking head...")
         generate_talking_head(IMG_PATH, WAV_PATH, ANIM_PATH)
         print(f"  saved {ANIM_PATH}")
     else:
-        print("Step 1: Talking head exists, skipping.")
+        print("Step 2: Talking head exists, skipping.")
 
-    # ── step 2: render background frames ──────────────────────────────────────
-    print("Step 2: Rendering background frames...")
+    # ── step 3: render background frames ──────────────────────────────────────
+    print("Step 3: Rendering background frames...")
     FADE_IN, FADE_OUT = 0.5, 1.0
     beat_dur = audio_duration / len(BEATS)
     frames   = []
@@ -354,7 +389,7 @@ def main():
             print(f"  {t:.0f}s / {audio_duration:.0f}s")
 
     # ── step 3: composite ──────────────────────────────────────────────────────
-    print("Step 3: Compositing...")
+    print("Step 4: Compositing...")
     bg_clip   = ImageSequenceClip(frames, fps=FPS)
     talk_clip = VideoFileClip(ANIM_PATH)
 

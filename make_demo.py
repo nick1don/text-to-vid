@@ -13,24 +13,15 @@ generate.IMG_PATH   = "./output/demo_narrator.png"
 generate.ANIM_PATH  = "./output/demo_head.mp4"
 generate.OUT_PATH   = "./output/demo.mp4"
 
+generate.TOPIC = (
+    "An open-source Python tool that generates talking-head videos "
+    "from just a photo and a prompt, using AI for voice, animation, and visuals"
+)
+
 generate.IMAGE_PROMPT = (
     "Professional AI researcher and software developer, front-facing headshot portrait, "
     "confident expression, modern tech aesthetic, photorealistic, clean neutral background"
 )
-
-generate.BEATS = [
-    "Give it a photo,\na script, and a voice.",
-    "It generates the voiceover,\nanimates your face,\nand renders the background.",
-    "One command.\nOne MP4.",
-    "Built with Python\n+ ElevenLabs + D-ID",
-]
-
-generate.SPOKEN_TEXT = """\
-This tool generates short talking-head videos from a photo and a script.
-Drop in your image, write what you want to say, and it handles the voiceover,
-lip sync, and animated background automatically.
-One command. One output file.\
-"""
 
 if __name__ == "__main__":
     generate.main()

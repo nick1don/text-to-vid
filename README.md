@@ -16,22 +16,26 @@ https://github.com/nick1don/text-to-vid/releases/download/tag/demo.mp4
 
 ## How it was built
 
-Four services orchestrated in a linear pipeline, each owning a distinct output that feeds the next.
+Five services orchestrated in a linear pipeline, each owning a distinct output that feeds the next.
 
-**Image generation** produces the narrator portrait when no photo is supplied — a single API call that returns an image URL or base64 payload, saved locally and reused on subsequent runs.
+**Script generation** takes a single topic string and produces the on-screen text cards and voiceover copy via an LLM. If you'd rather write the script yourself, you can skip this step and set the content directly.
 
-**ElevenLabs** handles text-to-speech. The script is chunked to stay within request limits, audio segments are concatenated, and the result is transcoded from MP3 to WAV before handoff.
+**Image generation** produces the narrator portrait when no photo is supplied — a single API call, saved locally and reused on subsequent runs.
 
-**D-ID** takes the portrait and audio and returns a lip-synced video. The job is submitted asynchronously and polled to completion. A short silence pad at the start keeps the first frame neutral — without it, the thumbnail shows an open mouth.
+**ElevenLabs** handles text-to-speech. The script is chunked to stay within request limits, segments are concatenated, and the result is transcoded to WAV before handoff.
 
-**PIL + MoviePy** owns the final assembly: background frames are rendered in Python and composited with the talking head and audio track into a single MP4. Each stage writes to disk, so re-runs skip any step that's already complete.
+**D-ID** takes the portrait and audio and returns a lip-synced video. The job is async and polled to completion. A short silence pad at the start keeps the first frame neutral.
+
+**PIL + MoviePy** owns the final assembly: background frames are rendered in Python and composited with the talking head and audio into a single MP4. Each stage writes to disk, so re-runs skip anything already complete.
 
 ---
 
 ## How it works
 
 ```
-Prompt (+ optional photo)
+Topic prompt (+ optional photo)
+      │
+      ├─► LLM               →  script (beats + voiceover copy)
       │
       ├─► Image generation  →  narrator image (if no photo provided)
       │
@@ -39,16 +43,8 @@ Prompt (+ optional photo)
       │
       ├─► D-ID /talks       →  lip-synced talking-head MP4
       │
-      └─► PIL + MoviePy     →  animated background frames
-                                    │
-                                    └─► CompositeVideoClip  →  final.mp4
+      └─► PIL + MoviePy     →  animated background + composite  →  final.mp4
 ```
-
-1. **Image generation** creates a portrait from `IMAGE_PROMPT` if no photo is provided at `output/narrator.png`.
-2. **ElevenLabs** converts your spoken text to natural-sounding audio (Brian voice by default — deep and resonant).
-3. **D-ID** animates the photo to match the audio, with `pad_audio: 0.5` so the face starts neutral (no open-mouth thumbnail).
-4. **PIL** renders every frame of the background: a dark canvas with cyan monospace code snippets that drift and crossfade every 5 seconds, a grid overlay, pulsing accent line, and the beat text centered on screen.
-5. **MoviePy** composites background + talking head + audio into the final video.
 
 Each step caches its output — re-running only regenerates what's missing.
 
@@ -87,33 +83,23 @@ export D_ID_API_KEY=you@email.com:yourkey
 
 ## Usage
 
-**1. Add your photo (optional)**
+**1. Set your topic**
 
-Place a square PNG of the speaker at `output/narrator.png`. If you skip this, set `IMAGE_PROMPT` in `generate.py` and the image will be generated automatically.
+Open `generate.py` and set `TOPIC` near the top. The script — on-screen text cards and voiceover copy — will be generated automatically.
+
+```python
+TOPIC = "A two-minute explainer on how transformers work"
+```
+
+To write the script yourself instead, leave `TOPIC` blank and set `BEATS` and `SPOKEN_TEXT` directly.
+
+**2. Add your photo (optional)**
+
+Place a square PNG of the speaker at `output/narrator.png`. If you skip this, set `IMAGE_PROMPT` and it will be generated automatically.
 
 ```bash
 mkdir -p output
 cp your_photo.png output/narrator.png
-```
-
-**2. Edit the script content**
-
-Open `generate.py` and update `BEATS`, `SPOKEN_TEXT`, and optionally `IMAGE_PROMPT` near the top:
-
-```python
-BEATS = [
-    "First on-screen card\nline two",
-    "Second card",
-    "Third card — longer text\ncan span multiple lines",
-    "Sign-off\n— Your Name",
-]
-
-SPOKEN_TEXT = """\
-Your full voiceover script goes here.
-It will be read aloud by ElevenLabs.
-"""
-
-IMAGE_PROMPT = "Portrait of a confident scientist in a lab, photorealistic"
 ```
 
 **3. Run**
