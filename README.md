@@ -58,7 +58,8 @@ Each step caches its output — re-running only regenerates what's missing.
 - Python 3.10+
 - An [ElevenLabs](https://elevenlabs.io) API key
 - A [D-ID](https://www.d-id.com) API key (`email:key` format)
-- An image generation API key _(optional — only needed if you don't provide a photo)_
+- An [Anthropic](https://console.anthropic.com) API key _(for script generation from topic)_
+- An OpenAI API key _(optional — only needed if you don't provide a photo)_
 - `ffmpeg` installed and on your PATH
 
 ---
@@ -80,6 +81,8 @@ Export your keys before running (or use a tool like `direnv`):
 ```bash
 export ELEVENLABS_API_KEY=sk_...
 export D_ID_API_KEY=you@email.com:yourkey
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk_...   # optional
 ```
 
 ---

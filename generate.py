@@ -17,6 +17,9 @@ ELEVENLABS_KEY = (os.environ.get("ELEVENLABS_API_KEY")
 D_ID_KEY       = (os.environ.get("D_ID_API_KEY")
                   or os.environ.get("d_id_api_key")
                   or "")
+ANTHROPIC_KEY  = (os.environ.get("ANTHROPIC_API_KEY")
+                  or os.environ.get("anthropic_api_key")
+                  or "")
 OPENAI_KEY     = (os.environ.get("OPENAI_API_KEY")
                   or os.environ.get("openai_api_key")
                   or "")
@@ -208,6 +211,8 @@ def render_frame(t, beat_text, text_alpha):
 
 # ── content moderation ─────────────────────────────────────────────────────────
 def check_safety(text, label="input"):
+    if not OPENAI_KEY:
+        return
     r = requests.post(
         "https://api.openai.com/v1/moderations",
         headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
@@ -223,10 +228,15 @@ def check_safety(text, label="input"):
 # ── LLM script generation ──────────────────────────────────────────────────────
 def generate_script(topic):
     r = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={"Authorization": f"Bearer {OPENAI_KEY}", "Content-Type": "application/json"},
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": ANTHROPIC_KEY,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        },
         json={
-            "model": "gpt-4o",
+            "model": "claude-opus-4-7",
+            "max_tokens": 1024,
             "messages": [{"role": "user", "content": (
                 f"Write content for a short talking-head video about: {topic}\n\n"
                 "Return a JSON object with three keys:\n"
@@ -235,13 +245,12 @@ def generate_script(topic):
                 "- \"bg_lines\": list of 20 short text lines for the video background — "
                 "relevant to the topic, visually interesting, single lines only. "
                 "Could be formulas, terms, phrases, data, commands, quotes — whatever fits the subject.\n\n"
-                "Return only valid JSON."
+                "Return only valid JSON, no other text."
             )}],
-            "response_format": {"type": "json_object"},
         },
     )
     r.raise_for_status()
-    result = json.loads(r.json()["choices"][0]["message"]["content"])
+    result = json.loads(r.json()["content"][0]["text"])
     return result["beats"], result["spoken_text"], result["bg_lines"]
 
 
@@ -348,8 +357,8 @@ def main():
 
     # ── step 0: generate script ────────────────────────────────────────────────
     if TOPIC:
-        if not OPENAI_KEY:
-            sys.exit("Error: set OPENAI_API_KEY to generate a script from TOPIC")
+        if not ANTHROPIC_KEY:
+            sys.exit("Error: set ANTHROPIC_API_KEY to generate a script from TOPIC")
         print("Step 0: Generating script from topic...")
         check_safety(TOPIC, "topic")
         BEATS, SPOKEN_TEXT, snippets = generate_script(TOPIC)
