@@ -5,7 +5,7 @@
 
 > Built with [Claude Code](https://claude.ai/code).
 
-Generate short-form videos with a synchronized talking head, voiceover, and animated code background — all from a photo and a prompt, or just a prompt.
+Generate short-form videos with a synchronized talking head, voiceover, and animated background — all from a photo and a prompt, or just a prompt.
 
 ---
 
