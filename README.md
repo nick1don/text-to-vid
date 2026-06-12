@@ -16,11 +16,15 @@ https://github.com/nick1don/text-to-vid/releases/download/tag/demo.mp4
 
 ## How it was built
 
-Three APIs in sequence:
+Four services orchestrated in a linear pipeline, each owning a distinct output that feeds the next.
 
-1. **ElevenLabs** — text in, MP3 out. Long scripts are chunked to stay under the request size limit, then the MP3 is converted to WAV for D-ID compatibility.
-2. **D-ID** — audio and image are uploaded separately to get hosted URLs, then a `/talks` job is created referencing both. The job is async, so the pipeline polls until complete. Getting a clean first frame required both `pad_audio: 0.5` (neutral face before speech starts) and a 0.5s crossfade-in on the composite.
-3. **PIL + MoviePy** — background frames are rendered in Python (8 pre-built code layouts crossfading every 5 seconds), then composited with the talking head via `CompositeVideoClip`.
+**Image generation** produces the narrator portrait when no photo is supplied — a single API call that returns an image URL or base64 payload, saved locally and reused on subsequent runs.
+
+**ElevenLabs** handles text-to-speech. The script is chunked to stay within request limits, audio segments are concatenated, and the result is transcoded from MP3 to WAV before handoff.
+
+**D-ID** takes the portrait and audio and returns a lip-synced video. The job is submitted asynchronously and polled to completion. A short silence pad at the start keeps the first frame neutral — without it, the thumbnail shows an open mouth.
+
+**PIL + MoviePy** owns the final assembly: background frames are rendered in Python and composited with the talking head and audio track into a single MP4. Each stage writes to disk, so re-runs skip any step that's already complete.
 
 ---
 
@@ -77,7 +81,6 @@ Export your keys before running (or use a tool like `direnv`):
 ```bash
 export ELEVENLABS_API_KEY=sk_...
 export D_ID_API_KEY=you@email.com:yourkey
-export OPENAI_API_KEY=sk_...   # optional
 ```
 
 ---
