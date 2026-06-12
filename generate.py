@@ -58,7 +58,7 @@ Your full voiceover script goes here.
 It will be read aloud by ElevenLabs.\
 """
 
-# Prompt used to generate the narrator image via DALL-E 3 (if no photo is provided)
+# Prompt used to generate the narrator image (if no photo is provided)
 IMAGE_PROMPT = (
     "Professional headshot portrait of a thoughtful, confident person, "
     "front-facing, soft neutral background, photorealistic, suitable for a video presenter"
@@ -335,7 +335,7 @@ def main():
         print(f"  {len(BEATS)} beats generated")
 
     # ── step 1: voiceover ──────────────────────────────────────────────────────
-    if not os.path.exists(AUDIO_PATH):
+    if not os.path.exists(AUDIO_PATH) or TOPIC:
         print("Step 1: Generating voiceover...")
         generate_speech(SPOKEN_TEXT, AUDIO_PATH)
         print(f"  saved {AUDIO_PATH}")
@@ -386,7 +386,7 @@ def main():
         if fi % (FPS * 5) == 0:
             print(f"  {t:.0f}s / {audio_duration:.0f}s")
 
-    # ── step 3: composite ──────────────────────────────────────────────────────
+    # ── step 4: composite ──────────────────────────────────────────────────────
     print("Step 4: Compositing...")
     bg_clip   = ImageSequenceClip(frames, fps=FPS)
     talk_clip = VideoFileClip(ANIM_PATH)
