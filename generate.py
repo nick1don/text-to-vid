@@ -106,19 +106,22 @@ CODE_POOL = [
     "guardrail.check(output, rules=['no_pii', 'on_topic'])",
 ]
 
-# Pre-build 8 static screen layouts (each shows 10 randomly placed lines)
+def build_screens(pool):
+    screens = []
+    for _s in range(8):
+        rng = random.Random(_s * 31 + 7)
+        chosen = rng.sample(pool, min(10, len(pool)))
+        y_step = H // 11
+        positions = [
+            (30 + rng.choice([0, 24, 48, 96]) + rng.randint(0, 60),
+             y_step * (i + 1) + rng.randint(-18, 18))
+            for i in range(10)
+        ]
+        screens.append(list(zip(chosen, positions)))
+    return screens
+
 random.seed(42)
-SCREENS = []
-for _s in range(8):
-    rng = random.Random(_s * 31 + 7)
-    chosen = rng.sample(CODE_POOL, 10)
-    y_step = H // 11
-    positions = [
-        (30 + rng.choice([0, 24, 48, 96]) + rng.randint(0, 60),
-         y_step * (i + 1) + rng.randint(-18, 18))
-        for i in range(10)
-    ]
-    SCREENS.append(list(zip(chosen, positions)))
+SCREENS = build_screens(CODE_POOL)
 
 
 # ── fonts ──────────────────────────────────────────────────────────────────────
@@ -212,9 +215,12 @@ def generate_script(topic):
             "model": "gpt-4o",
             "messages": [{"role": "user", "content": (
                 f"Write content for a short talking-head video about: {topic}\n\n"
-                "Return a JSON object with two keys:\n"
+                "Return a JSON object with three keys:\n"
                 "- \"beats\": list of 4 short on-screen text cards (each under 60 chars, \\n for line breaks)\n"
-                "- \"spoken_text\": a natural 15-20 second voiceover script (3-4 sentences)\n\n"
+                "- \"spoken_text\": a natural 15-20 second voiceover script (3-4 sentences)\n"
+                "- \"bg_lines\": list of 20 short text lines for the video background — "
+                "relevant to the topic, visually interesting, single lines only. "
+                "Could be formulas, terms, phrases, data, commands, quotes — whatever fits the subject.\n\n"
                 "Return only valid JSON."
             )}],
             "response_format": {"type": "json_object"},
@@ -222,7 +228,7 @@ def generate_script(topic):
     )
     r.raise_for_status()
     result = json.loads(r.json()["choices"][0]["message"]["content"])
-    return result["beats"], result["spoken_text"]
+    return result["beats"], result["spoken_text"], result["bg_lines"]
 
 
 # ── ElevenLabs TTS ─────────────────────────────────────────────────────────────
@@ -324,15 +330,16 @@ def generate_talking_head(img_path, wav_path, out_path):
 
 # ── pipeline ───────────────────────────────────────────────────────────────────
 def main():
-    global BEATS, SPOKEN_TEXT
+    global BEATS, SPOKEN_TEXT, SCREENS
 
     # ── step 0: generate script ────────────────────────────────────────────────
     if TOPIC:
         if not OPENAI_KEY:
             sys.exit("Error: set OPENAI_API_KEY to generate a script from TOPIC")
         print("Step 0: Generating script from topic...")
-        BEATS, SPOKEN_TEXT = generate_script(TOPIC)
-        print(f"  {len(BEATS)} beats generated")
+        BEATS, SPOKEN_TEXT, snippets = generate_script(TOPIC)
+        SCREENS = build_screens(snippets)
+        print(f"  {len(BEATS)} beats, {len(snippets)} code snippets")
 
     # ── step 1: voiceover ──────────────────────────────────────────────────────
     if not os.path.exists(AUDIO_PATH) or TOPIC:
