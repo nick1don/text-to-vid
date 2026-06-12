@@ -1,0 +1,21 @@
+# secrets
+.env
+*.key
+
+# generated output
+output/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.Python
+env/
+venv/
+.venv/
+
+# os
+.DS_Store
+Thumbs.db
