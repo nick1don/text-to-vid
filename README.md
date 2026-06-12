@@ -1,4 +1,4 @@
-# AI Talking-Head Video Generator
+# Text to Vid
 
 > Built with [Claude Code](https://claude.ai/code).
 
